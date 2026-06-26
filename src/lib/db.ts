@@ -79,7 +79,7 @@ function writeJson<T>(file: string, data: T): void {
 async function pg(query: string, params: any[] = []): Promise<any[]> {
   const { neon } = await import("@neondatabase/serverless");
   const sql = neon(process.env.POSTGRES_URL!);
-  return await (sql as any)(query, params);
+  return await sql.query(query, params) as any[];
 }
 
 // ============ PUBLIC API ============
