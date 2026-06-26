@@ -112,6 +112,16 @@ export async function getSubmissions(): Promise<TaskSubmission[]> {
   return rows.map(mapSubmission);
 }
 
+export async function deleteSubmission(recordId: string): Promise<void> {
+  if (!USE_POSTGRES) {
+    const all = readJson<TaskSubmission[]>("submissions.json", []);
+    const filtered = all.filter((s) => s.recordId !== recordId);
+    writeJson("submissions.json", filtered);
+    return;
+  }
+  await pg(`DELETE FROM submissions WHERE record_id = $1`, [recordId]);
+}
+
 export async function getSubmissionsByPhone(phone: string): Promise<TaskSubmission[]> {
   if (!USE_POSTGRES) return readJson<TaskSubmission[]>("submissions.json", []).filter((s) => s.phone === phone);
   const rows = await pg(`SELECT * FROM submissions WHERE phone = $1 ORDER BY submitted_at DESC`, [phone]);

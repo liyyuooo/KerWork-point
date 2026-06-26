@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchTaskRecords, fetchXhsRecords } from "@/lib/feishu";
-import { initDb, upsertSubmission, getSubmissions } from "@/lib/db";
+import { initDb, upsertSubmission, getSubmissions, deleteSubmission } from "@/lib/db";
 
 const POINTS_MAP: Record<string, number> = {
   "场景体验反馈": 50,
@@ -20,7 +20,13 @@ export async function POST() {
     const taskRecords = await fetchTaskRecords();
     const xhsRecords = await fetchXhsRecords();
 
+    const feishuIds = new Set([
+      ...taskRecords.map((r) => r.recordId),
+      ...xhsRecords.map((r) => r.recordId),
+    ]);
+
     let newCount = 0;
+    let deletedCount = 0;
 
     for (const rec of taskRecords) {
       if (existingIds.has(rec.recordId)) continue;
@@ -56,7 +62,15 @@ export async function POST() {
       newCount++;
     }
 
-    return NextResponse.json({ success: true, newCount, total: existing.length + newCount });
+    for (const sub of existing) {
+      if (!feishuIds.has(sub.recordId)) {
+        await deleteSubmission(sub.recordId);
+        deletedCount++;
+      }
+    }
+
+    const total = existing.length + newCount - deletedCount;
+    return NextResponse.json({ success: true, newCount, deletedCount, total });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
