@@ -43,7 +43,7 @@ export default function AdminPage() {
   const [redeems, setRedeems] = useState<Redeem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState("");
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected" | "over_limit">("pending");
 
   useEffect(() => {
     loadData();
@@ -163,7 +163,7 @@ export default function AdminPage() {
         {tab === "review" && (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex gap-2 mb-4">
-              {(["all", "pending", "approved", "rejected"] as const).map((f) => (
+              {(["all", "pending", "approved", "rejected", "over_limit"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -171,7 +171,7 @@ export default function AdminPage() {
                     filter === f ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  {f === "all" ? "全部" : f === "pending" ? "待审核" : f === "approved" ? "已通过" : "已拒绝"}
+                  {f === "all" ? "全部" : f === "pending" ? "待审核" : f === "approved" ? "已通过" : f === "over_limit" ? "已超限" : "已拒绝"}
                   {f !== "all" && ` (${submissions.filter((s) => s.status === f).length})`}
                 </button>
               ))}
@@ -211,9 +211,9 @@ export default function AdminPage() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className={`text-xs px-2 py-1 rounded-full ${
-                          s.status === "approved" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                          s.status === "approved" ? "bg-emerald-50 text-emerald-600" : s.status === "over_limit" ? "bg-gray-100 text-gray-500" : "bg-red-50 text-red-600"
                         }`}>
-                          {s.status === "approved" ? "已通过" : "已拒绝"}
+                          {s.status === "approved" ? "已通过" : s.status === "over_limit" ? "已超限" : "已拒绝"}
                         </span>
                         <button
                           onClick={() => handleReview(s.recordId, "reset")}

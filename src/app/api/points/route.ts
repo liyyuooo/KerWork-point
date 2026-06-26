@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initDb, getSubmissionsByPhone, getUserPoints, getRedeemsByPhone } from "@/lib/db";
+import { initDb, getSubmissionsByPhone, getUserPoints, getRedeemsByPhone, TASK_LIMITS } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const phone = request.nextUrl.searchParams.get("phone");
@@ -25,10 +25,17 @@ export async function GET(request: NextRequest) {
     reviewNote: s.reviewNote,
   }));
 
+  const taskProgress = Object.entries(TASK_LIMITS).map(([taskType, limit]) => ({
+    taskType,
+    approved: submissions.filter((s) => s.taskType === taskType && s.status === "approved").length,
+    limit,
+  }));
+
   return NextResponse.json({
     phone,
     points,
     tasks: taskDetails,
+    taskProgress,
     redeems: redeems.map((r) => ({
       rewardName: r.rewardName,
       pointsCost: r.pointsCost,

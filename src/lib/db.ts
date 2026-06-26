@@ -11,11 +11,19 @@ export interface TaskSubmission {
   content: string;
   submittedAt: number;
   submitter: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "over_limit";
   points: number;
   reviewedAt?: number;
   reviewNote?: string;
 }
+
+export const TASK_LIMITS: Record<string, number> = {
+  "场景体验反馈": 1,
+  "金点子": 1,
+  "Bug猎人": 2,
+  "小红书图文笔记": 2,
+  "小红书视频笔记": 1,
+};
 
 export interface RedeemRequest {
   id: string;
@@ -128,6 +136,15 @@ export async function getSubmissionsByPhone(phone: string): Promise<TaskSubmissi
   return rows.map(mapSubmission);
 }
 
+export async function getApprovedCount(phone: string, taskType: string): Promise<number> {
+  if (!USE_POSTGRES) {
+    const all = readJson<TaskSubmission[]>("submissions.json", []);
+    return all.filter((s) => s.phone === phone && s.taskType === taskType && s.status === "approved").length;
+  }
+  const rows = await pg(`SELECT COUNT(*) as cnt FROM submissions WHERE phone = $1 AND task_type = $2 AND status = 'approved'`, [phone, taskType]);
+  return Number(rows[0].cnt);
+}
+
 export async function upsertSubmission(s: TaskSubmission): Promise<void> {
   if (!USE_POSTGRES) {
     const all = readJson<TaskSubmission[]>("submissions.json", []);
@@ -137,8 +154,8 @@ export async function upsertSubmission(s: TaskSubmission): Promise<void> {
   await pg(`INSERT INTO submissions (record_id, phone, wechat, task_type, content, submitted_at, submitter, status, points) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (record_id) DO NOTHING`, [s.recordId, s.phone, s.wechat, s.taskType, s.content, s.submittedAt, s.submitter, s.status, s.points]);
 }
 
-export async function updateSubmissionStatus(recordId: string, action: "approve" | "reject" | "reset", reviewNote?: string): Promise<TaskSubmission | null> {
-  const status = action === "approve" ? "approved" : action === "reject" ? "rejected" : "pending";
+export async function updateSubmissionStatus(recordId: string, action: "approve" | "reject" | "reset" | "over_limit", reviewNote?: string): Promise<TaskSubmission | null> {
+  const status = action === "approve" ? "approved" : action === "reject" ? "rejected" : action === "over_limit" ? "over_limit" : "pending";
   if (!USE_POSTGRES) {
     const all = readJson<TaskSubmission[]>("submissions.json", []);
     const sub = all.find((s) => s.recordId === recordId);

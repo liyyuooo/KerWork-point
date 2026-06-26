@@ -12,6 +12,11 @@ interface PointsData {
     submittedAt: number;
     reviewNote?: string;
   }[];
+  taskProgress: {
+    taskType: string;
+    approved: number;
+    limit: number;
+  }[];
   redeems: {
     rewardName: string;
     pointsCost: number;
@@ -90,6 +95,7 @@ export default function Home() {
       case "pending": return "审核中";
       case "approved": return "已通过";
       case "rejected": return "未通过";
+      case "over_limit": return "已达上限";
       case "fulfilled": return "已发放";
       default: return s;
     }
@@ -99,6 +105,7 @@ export default function Home() {
     switch (s) {
       case "approved": case "fulfilled": return "text-emerald-600 bg-emerald-50";
       case "rejected": return "text-red-600 bg-red-50";
+      case "over_limit": return "text-gray-500 bg-gray-100";
       default: return "text-amber-600 bg-amber-50";
     }
   };
@@ -153,6 +160,17 @@ export default function Home() {
                   <div className="text-2xl font-bold text-gray-500">{data.points.redeemed}</div>
                   <div className="text-xs text-gray-500 mt-1">已兑换</div>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">任务进度</h2>
+              <div className="flex flex-wrap gap-2">
+                {data.taskProgress.map((tp) => (
+                  <div key={tp.taskType} className={`text-xs px-3 py-1.5 rounded-full ${tp.approved >= tp.limit ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-gray-600"}`}>
+                    {tp.taskType} {tp.approved}/{tp.limit}
+                  </div>
+                ))}
               </div>
             </div>
 
