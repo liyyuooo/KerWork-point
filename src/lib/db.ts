@@ -74,12 +74,22 @@ function writeJson<T>(file: string, data: T): void {
   fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify(data, null, 2));
 }
 
-// ============ POSTGRES (production via Neon) ============
+// ============ POSTGRES (production via pg) ============
+
+let _pool: any = null;
+
+async function getPool() {
+  if (!_pool) {
+    const { Pool } = await import("pg");
+    _pool = new Pool({ connectionString: process.env.POSTGRES_URL, ssl: { rejectUnauthorized: false }, max: 5 });
+  }
+  return _pool;
+}
 
 async function pg(query: string, params: any[] = []): Promise<any[]> {
-  const { neon } = await import("@neondatabase/serverless");
-  const sql = neon(process.env.POSTGRES_URL!);
-  return await sql.query(query, params) as any[];
+  const pool = await getPool();
+  const result = await pool.query(query, params);
+  return result.rows;
 }
 
 // ============ PUBLIC API ============
