@@ -47,7 +47,7 @@ export interface XhsRecord {
 }
 
 function parseTaskType(raw: string): string {
-  if (raw.includes("场景体验反馈")) return "场景体验反馈";
+  if (raw.includes("场景体验")) return "场景体验反馈";
   if (raw.includes("金点子")) return "金点子";
   if (raw.includes("Bug")) return "Bug猎人";
   return raw;

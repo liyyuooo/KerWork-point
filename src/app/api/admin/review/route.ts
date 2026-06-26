@@ -17,11 +17,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "缺少参数" }, { status: 400 });
     }
 
-    if (action !== "approve" && action !== "reject") {
+    if (action !== "approve" && action !== "reject" && action !== "reset") {
       return NextResponse.json({ error: "无效操作" }, { status: 400 });
     }
 
-    const submission = await updateSubmissionStatus(recordId, action, reviewNote);
+    const submission = await updateSubmissionStatus(recordId, action as "approve" | "reject" | "reset", reviewNote);
     if (!submission) {
       return NextResponse.json({ error: "未找到该记录" }, { status: 404 });
     }

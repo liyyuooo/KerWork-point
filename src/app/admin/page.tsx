@@ -24,10 +24,23 @@ interface Reward {
   remainingCount: number;
 }
 
+interface Redeem {
+  id: string;
+  phone: string;
+  rewardTier: number;
+  rewardName: string;
+  pointsCost: number;
+  status: string;
+  createdAt: number;
+  cardNumber?: string;
+  cardSecret?: string;
+}
+
 export default function AdminPage() {
   const [tab, setTab] = useState<"review" | "rewards" | "cards">("review");
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [redeems, setRedeems] = useState<Redeem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
@@ -37,14 +50,17 @@ export default function AdminPage() {
   }, []);
 
   async function loadData() {
-    const [subRes, rewRes] = await Promise.all([
+    const [subRes, rewRes, redRes] = await Promise.all([
       fetch("/api/admin/review"),
       fetch("/api/redeem"),
+      fetch("/api/admin/redeems"),
     ]);
     const subData = await subRes.json();
     const rewData = await rewRes.json();
+    const redData = await redRes.json();
     setSubmissions(subData.submissions || []);
     setRewards(rewData.rewards || []);
+    setRedeems(redData.redeems || []);
   }
 
   async function handleSync() {
@@ -61,7 +77,7 @@ export default function AdminPage() {
     setSyncing(false);
   }
 
-  async function handleReview(recordId: string, action: "approve" | "reject") {
+  async function handleReview(recordId: string, action: "approve" | "reject" | "reset") {
     const res = await fetch("/api/admin/review", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -69,6 +85,22 @@ export default function AdminPage() {
     });
     const data = await res.json();
     if (data.success) loadData();
+  }
+
+  async function handleCancelRedeem(redeemId: string) {
+    if (!confirm("确认撤回该兑换？积分将退还给用户，库存恢复。")) return;
+    const res = await fetch("/api/admin/redeems", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ redeemId, action: "cancel" }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setMsg("兑换已撤回");
+      loadData();
+    } else {
+      setMsg(data.error || "撤回失败");
+    }
   }
 
   async function handleFulfill() {
@@ -177,11 +209,19 @@ export default function AdminPage() {
                         </button>
                       </div>
                     ) : (
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        s.status === "approved" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                      }`}>
-                        {s.status === "approved" ? "已通过" : "已拒绝"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          s.status === "approved" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                        }`}>
+                          {s.status === "approved" ? "已通过" : "已拒绝"}
+                        </span>
+                        <button
+                          onClick={() => handleReview(s.recordId, "reset")}
+                          className="px-2 py-1 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-100"
+                        >
+                          撤回
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -196,7 +236,7 @@ export default function AdminPage() {
         {tab === "rewards" && (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">礼品池状态</h2>
-            <div className="space-y-3">
+            <div className="space-y-3 mb-6">
               {rewards.map((r) => (
                 <div key={r.tier} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div>
@@ -210,6 +250,40 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">兑换记录</h2>
+            {redeems.length === 0 ? (
+              <p className="text-gray-400 text-sm">暂无兑换记录</p>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {redeems.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">
+                        {r.phone} <span className="text-gray-400 mx-1">·</span> {r.rewardName}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(r.createdAt).toLocaleString("zh-CN")} · -{r.pointsCost} 积分
+                        {r.status === "fulfilled" && " · 已发放卡密"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        r.status === "fulfilled" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                      }`}>
+                        {r.status === "fulfilled" ? "已发放" : "待发放"}
+                      </span>
+                      <button
+                        onClick={() => handleCancelRedeem(r.id)}
+                        className="px-2 py-1 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50"
+                      >
+                        撤回
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
